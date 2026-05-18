@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>가계부 거래 내역 — 목업</title>
+<style>
+  /* 60-30-10: Base(white/#F5F8FF) 60% · Navy(#1B3A6B) 30% · Sky(#0EA5E9) 10% */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #dde3ed;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 24px;
+  }
+  .window {
+    width: 1280px; height: 800px; display: flex; border-radius: 10px;
+    overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+
+  /* 30% 네이비 */
+  .sidebar {
+    width: 220px; background: #1B3A6B; color: #BAE6FD;
+    display: flex; flex-direction: column; flex-shrink: 0; padding: 0 0 16px 0;
+  }
+  .sidebar-logo {
+    padding: 20px 20px 24px; font-size: 17px; font-weight: 700; color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label {
+    font-size: 11px; font-weight: 600; color: rgba(186,230,253,0.6);
+    padding: 12px 20px 4px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; font-size: 14px; color: #BAE6FD; cursor: pointer;
+  }
+  .nav-item:hover { background: #254E8F; }
+  .nav-item.active { background: #0EA5E9; color: #fff; font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; background: rgba(255,255,255,0.15); color: #fff;
+    font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 7px;
+  }
+  .sidebar-spacer { flex: 1; }
+  .sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 16px; }
+
+  /* 60% 베이스 */
+  .main { flex: 1; background: #F5F8FF; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    background: #fff; border-bottom: 1px solid #E2E8F0;
+    padding: 0 32px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .month-nav { display: flex; align-items: center; gap: 12px; }
+  .month-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: 1.5px solid #E2E8F0;
+    background: #fff; color: #0EA5E9; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .month-title { font-size: 20px; font-weight: 700; color: #1E293B; }
+
+  /* 10% 강조 */
+  .btn-primary {
+    padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    background: #0EA5E9; color: #fff; border: none; cursor: pointer;
+  }
+  .btn-outline {
+    padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    border: 1.5px solid #E2E8F0; background: #fff; color: #1B3A6B; cursor: pointer;
+  }
+
+  .content { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* 60% 베이스 — 요약 카드 */
+  .summary-row { display: flex; gap: 16px; }
+  .summary-card {
+    flex: 1; background: #fff; border-radius: 12px; padding: 18px 22px;
+    border: 1px solid #E2E8F0;
+  }
+  .summary-label { font-size: 12px; color: #64748B; margin-bottom: 6px; font-weight: 500; }
+  .summary-value { font-size: 22px; font-weight: 700; }
+  .income-val { color: #10B981; }
+  .expense-val { color: #EF4444; }
+  /* 10% 강조 — 잔액 */
+  .balance-val { color: #0EA5E9; }
+  .summary-sub { font-size: 11px; color: #94A3B8; margin-top: 4px; }
+
+  .filter-row { display: flex; align-items: center; gap: 10px; }
+  .chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: 1.5px solid #E2E8F0; background: #fff; color: #64748B;
+  }
+  .chip.active { background: #E0F2FE; border-color: #0EA5E9; color: #0369A1; }
+
+  .tx-group-header {
+    font-size: 12px; font-weight: 600; color: #64748B;
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  }
+  .tx-group-line { flex: 1; height: 1px; background: #E2E8F0; }
+  .tx-group-total { font-size: 12px; color: #94A3B8; }
+
+  .tx-item {
+    background: #fff; border-radius: 10px; padding: 13px 18px;
+    display: flex; align-items: center; gap: 14px;
+    border: 1px solid #E2E8F0; transition: border-color 0.15s;
+  }
+  .tx-item:hover { border-color: #BAE6FD; }
+  .tx-cat-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .tx-info { flex: 1; }
+  .tx-title { font-size: 14px; font-weight: 500; color: #1E293B; }
+  .tx-meta { font-size: 12px; color: #94A3B8; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  /* 10% 강조 — 연말정산 태그 */
+  .tx-deduction { font-size: 11px; background: #E0F2FE; color: #0369A1; padding: 1px 7px; border-radius: 5px; }
+  .tx-amount { font-size: 16px; font-weight: 700; text-align: right; }
+  .tx-amount.income { color: #10B981; }
+  .tx-amount.expense { color: #EF4444; }
+  .tx-payment { font-size: 11px; color: #94A3B8; text-align: right; margin-top: 2px; }
+  .tx-list { display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="window">
+  <nav class="sidebar">
+    <div class="sidebar-logo"><span>✦</span> DoBook</div>
+    <div class="section-label">투두</div>
+    <div class="nav-item"><span class="nav-icon">☀️</span> 오늘 <span class="nav-badge">5</span></div>
+    <div class="nav-item"><span class="nav-icon">📋</span> 전체 할 일 <span class="nav-badge">12</span></div>
+    <div class="nav-item"><span class="nav-icon">📊</span> 통계</div>
+    <div class="sidebar-divider"></div>
+    <div class="section-label">가계부</div>
+    <div class="nav-item active"><span class="nav-icon">💳</span> 거래 내역</div>
+    <div class="nav-item"><span class="nav-icon">📈</span> 예산 현황</div>
+    <div class="nav-item"><span class="nav-icon">🧾</span> 연말정산</div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-item"><span class="nav-icon">⚙️</span> 설정</div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="month-nav">
+        <button class="month-btn">‹</button>
+        <span class="month-title">2026년 5월</span>
+        <button class="month-btn">›</button>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-outline">📥 내보내기</button>
+        <button class="btn-primary">+ 거래 추가</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">총 수입</div>
+          <div class="summary-value income-val">+3,500,000원</div>
+          <div class="summary-sub">전월 대비 ─</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">총 지출</div>
+          <div class="summary-value expense-val">−1,283,500원</div>
+          <div class="summary-sub">전월 대비 ▲ 12%</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">잔액</div>
+          <div class="summary-value balance-val">2,216,500원</div>
+          <div class="summary-sub">이번 달 남은 금액</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">이번 달 목표 저축</div>
+          <div class="summary-value" style="color:#10B981;">500,000원</div>
+          <div class="summary-sub" style="color:#10B981;">달성 가능 ✓</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="chip active">전체</div>
+        <div class="chip">수입</div>
+        <div class="chip">지출</div>
+        <div class="chip">식비</div>
+        <div class="chip">의료</div>
+        <div class="chip">교통</div>
+        <div class="chip">문화</div>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <div class="chip">신용카드</div>
+          <div class="chip">체크카드</div>
+        </div>
+      </div>
+
+      <div class="tx-list">
+        <div class="tx-group-header">
+          5월 18일 (오늘)
+          <div class="tx-group-line"></div>
+          <span class="tx-group-total">−12,000원</span>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#FFF7ED;">🛒</div>
+          <div class="tx-info">
+            <div class="tx-title">편의점</div>
+            <div class="tx-meta">식비 · 체크카드</div>
+          </div>
+          <div>
+            <div class="tx-amount expense">−12,000원</div>
+            <div class="tx-payment">체크카드</div>
+          </div>
+        </div>
+
+        <div class="tx-group-header" style="margin-top:4px;">
+          5월 17일
+          <div class="tx-group-line"></div>
+          <span class="tx-group-total" style="color:#10B981;">+3,500,000원 / −51,500원</span>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#F0F9FF;">💰</div>
+          <div class="tx-info">
+            <div class="tx-title">5월 급여</div>
+            <div class="tx-meta">수입 · 계좌이체</div>
+          </div>
+          <div>
+            <div class="tx-amount income">+3,500,000원</div>
+            <div class="tx-payment">계좌이체</div>
+          </div>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#FDF4FF;">☕</div>
+          <div class="tx-info">
+            <div class="tx-title">카페 아메리카노</div>
+            <div class="tx-meta">식비 · 신용카드</div>
+          </div>
+          <div>
+            <div class="tx-amount expense">−6,500원</div>
+            <div class="tx-payment">신용카드</div>
+          </div>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#F0FDF4;">🏥</div>
+          <div class="tx-info">
+            <div class="tx-title">내과 진료비</div>
+            <div class="tx-meta">
+              의료비 · 신용카드
+              <span class="tx-deduction">연말정산 — 의료비</span>
+            </div>
+          </div>
+          <div>
+            <div class="tx-amount expense">−45,000원</div>
+            <div class="tx-payment">신용카드</div>
+          </div>
+        </div>
+
+        <div class="tx-group-header" style="margin-top:4px;">
+          5월 15일
+          <div class="tx-group-line"></div>
+          <span class="tx-group-total">−1,150,000원</span>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#EFF6FF;">🏠</div>
+          <div class="tx-info">
+            <div class="tx-title">월세</div>
+            <div class="tx-meta">주거 · 계좌이체 · 고정지출</div>
+          </div>
+          <div>
+            <div class="tx-amount expense">−1,100,000원</div>
+            <div class="tx-payment">계좌이체</div>
+          </div>
+        </div>
+        <div class="tx-item">
+          <div class="tx-cat-icon" style="background:#F0F9FF;">📱</div>
+          <div class="tx-info">
+            <div class="tx-title">넷플릭스</div>
+            <div class="tx-meta">구독 · 신용카드 · 고정지출</div>
+          </div>
+          <div>
+            <div class="tx-amount expense">−17,000원</div>
+            <div class="tx-payment">신용카드</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
